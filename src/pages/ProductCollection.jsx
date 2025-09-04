@@ -400,23 +400,77 @@ export default function ProductCollection() {
                     </div>
                     
                     {/* Add to Cart Button */}
-                     <div className="flex space-x-2">
-    <button 
-      onClick={() => {
-        addToCart(product);
-        // Optional: Show a toast notification
-        alert(`${product.name} added to cart! 🎉`);
-      }}
-      className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-2xl font-semibold hover:scale-105 transform transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-      disabled={product.inStock === 0}
-    >
-      {product.inStock > 0 ? 'Add to Cart' : 'Out of Stock'}
-    </button>
-    <button className="bg-gray-100 hover:bg-gray-200 p-3 rounded-2xl transition-colors">
-      👁️
-    </button>
-  </div>
-                  </div>
+                    {/* Add to Cart Button */}
+<div className="flex space-x-2">
+  <button 
+    onClick={() => {
+      // Add to cart first
+      addToCart(product);
+      
+      // 🎯 MoEngage Add to Cart Event Tracking
+      if (window.Moengage) {
+        try {
+          // Get current user data
+          const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+          
+          // Track Add to Cart event with detailed attributes
+          window.Moengage.track_event("Add_to_Cartt", {
+            // Product Details
+            "product_id": product.id,
+            "product_name": product.name,
+            "product_category": category, // rings, necklaces, etc.
+            "product_price": product.price,
+            "product_original_price": product.originalPrice,
+            "product_discount": product.originalPrice - product.price,
+            "product_discount_percentage": Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100),
+            "product_rating": product.rating,
+            "product_stock": product.inStock,
+            "product_description": product.description,
+            "has_discount": product.originalPrice > product.price,
+            "currency": "USD",
+            
+            // User Context
+            "user_email": currentUser.email || 'unknown',
+            "user_name": currentUser.name || 'unknown',
+            "user_login_method": currentUser.loginMethod || 'unknown',
+            
+            // Shopping Context  
+            "current_cart_count": getCartCount() + 1, // After adding this item
+            "category_viewed": category,
+            "page_url": window.location.href,
+            "timestamp": new Date(),
+            
+            // Engagement Metrics
+            "is_sale_item": product.originalPrice > product.price,
+            "price_range": product.price < 1000 ? 'budget' : product.price < 3000 ? 'mid_range' : 'luxury',
+            "product_availability": product.inStock > 10 ? 'high' : product.inStock > 0 ? 'low' : 'out_of_stock'
+          });
+          
+          console.log('✅ MoEngage Add to Cart event tracked:', {
+            product: product.name,
+            category: category,
+            price: product.price,
+            user: currentUser.email
+          });
+          
+        } catch (error) {
+          console.error('❌ MoEngage Add to Cart tracking failed:', error);
+        }
+      }
+      
+      // Show success message
+      alert(`${product.name} added to cart! 🎉`);
+    }}
+    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-2xl font-semibold hover:scale-105 transform transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+    disabled={product.inStock === 0}
+  >
+    {product.inStock > 0 ? 'Add to Cart' : 'Out of Stock'}
+  </button>
+  <button className="bg-gray-100 hover:bg-gray-200 p-3 rounded-2xl transition-colors">
+    👁️
+  </button>
+</div>
+         </div>
                 </div>
               ))}
             </div>

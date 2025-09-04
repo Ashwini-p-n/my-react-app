@@ -363,38 +363,95 @@
 //     </div>
 //   );
 // }
-   
+  
 // src/pages/Join.jsx
-import React, { useState, useEffect } from "react";
+// src/pages/Join.jsx
+// src/pages/Join.jsx
+import React, { useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
 
-// 🎯 MoEngage Helper Function
-// Fixed to correctly populate Name (Standard) and Email (Standard)
-const moEngageLogin = (userId, userInfo = {}) => {
+// 🎯 Fixed MoEngage Helper Function
+const moEngageLogin = async (userId, userInfo = {}) => {
   if (window.Moengage) {
-    window.Moengage.add_unique_user_id(userId);
-    if (userInfo.email) window.Moengage.add_email(userInfo.email);        // Email (Standard)
-    if (userInfo.name) window.Moengage.add_user_name(userInfo.name);      // Name (Standard)
-    if (userInfo.firstName) window.Moengage.add_first_name(userInfo.firstName);
-    if (userInfo.lastName) window.Moengage.add_last_name(userInfo.lastName);
+    try {
+      // Set unique user ID first
+      await window.Moengage.add_unique_user_id(userId);
+      
+      // Use only existing MoEngage methods
+      if (userInfo.email) await window.Moengage.add_email(userInfo.email);
+      if (userInfo.mobile) await window.Moengage.add_mobile(userInfo.mobile);
+      if (userInfo.firstName) await window.Moengage.add_first_name(userInfo.firstName);
+      if (userInfo.lastName) await window.Moengage.add_last_name(userInfo.lastName);
+      if (userInfo.birthday) await window.Moengage.add_birthday(userInfo.birthday);
+      if (userInfo.gender) await window.Moengage.add_gender(userInfo.gender);
+      
+      // Use add_user_attribute for full name
+      if (userInfo.name) {
+        try {
+          await window.Moengage.add_user_attribute('u_n', userInfo.name);
+        } catch (nameError) {
+          // Fallback method
+          if (window.Moengage.setUserAttribute) {
+            await window.Moengage.setUserAttribute('u_n', userInfo.name);
+          }
+        }
+      }
+      
+      console.log('✅ MoEngage user attributes sent successfully:', {
+        userId,
+        email: userInfo.email,
+        mobile: userInfo.mobile,
+        firstName: userInfo.firstName,
+        lastName: userInfo.lastName,
+        name: userInfo.name,
+        birthday: userInfo.birthday,
+        gender: userInfo.gender
+      });
+      
+    } catch (error) {
+      console.error('❌ MoEngage integration error:', error);
+    }
+  } else {
+    console.warn('⚠️ MoEngage not initialized');
   }
 };
 
-// 🎯 Google JWT Decoder Function
+// 🎯 Enhanced Google JWT Decoder with Better Error Handling
 const decodeGoogleJWT = (token) => {
   try {
-    const base64Url = token.split('.')[1];
+    console.log('🔍 Decoding Google JWT token...');
+    
+    if (!token) {
+      throw new Error('No token provided');
+    }
+    
+    const parts = token.split('.');
+    if (parts.length !== 3) {
+      throw new Error('Invalid JWT format');
+    }
+    
+    const base64Url = parts[1];
     const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    
+    // Add padding if needed
+    const padding = '===='.substring(0, (4 - (base64.length % 4)) % 4);
+    const paddedBase64 = base64 + padding;
+    
     const jsonPayload = decodeURIComponent(
-      atob(base64)
+      atob(paddedBase64)
         .split('')
         .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
         .join('')
     );
-    return JSON.parse(jsonPayload);
+    
+    const decoded = JSON.parse(jsonPayload);
+    console.log('✅ Successfully decoded Google JWT:', decoded);
+    return decoded;
+    
   } catch (error) {
-    console.error('Error decoding Google JWT:', error);
+    console.error('❌ Error decoding Google JWT:', error);
+    console.error('Token received:', token);
     return null;
   }
 };
@@ -402,11 +459,15 @@ const decodeGoogleJWT = (token) => {
 export default function Join() {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
-
+  
   // 🎯 Form State Management
   const [formData, setFormData] = useState({
-    fullName: '',
+    firstName: '',
+    lastName: '',
     email: '',
+    mobile: '',
+    birthday: '',
+    gender: '',
     password: '',
     confirmPassword: ''
   });
@@ -418,64 +479,34 @@ export default function Join() {
     });
   };
 
-  // 🎯 Process Google User for MoEngage + App
-  const processGoogleUser = (googleUser) => {
-    const realUserEmail = googleUser.email;
-    const realUserName = googleUser.name;
-    const realUserPicture = googleUser.picture;
-    const realUserFirstName = googleUser.given_name;
-    const realUserLastName = googleUser.family_name;
-
-    moEngageLogin(realUserEmail, { 
-      email: realUserEmail,
-      name: realUserName,
-      firstName: realUserFirstName,
-      lastName: realUserLastName
-    });
-
-    if (window.Moengage) {
-      window.Moengage.track_event('user_login', {
-        login_method: 'google',
-        source: 'google_oauth',
-        user_email: realUserEmail,
-        user_name: realUserName
-      });
-    }
-
-    localStorage.setItem('currentUser', JSON.stringify({
-      id: realUserEmail,
-      email: realUserEmail,
-      name: realUserName,
-      firstName: realUserFirstName,
-      lastName: realUserLastName,
-      picture: realUserPicture,
-      loginMethod: 'google'
-    }));
-  };
-
   // 🎯 Handle Email Login
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
+      console.log('Login attempt:', { email: formData.email });
       const userId = formData.email;
-      moEngageLogin(userId, { 
-        email: formData.email,
-        name: formData.fullName 
+      
+      await moEngageLogin(userId, { 
+        email: formData.email
       });
-
+      
       if (window.Moengage) {
-        window.Moengage.track_event('user_login', {
-          source: 'email_form',
-          login_method: 'email'
-        });
+        try {
+          window.Moengage.track_event('user_login', {
+            source: 'email_form',
+            login_method: 'email'
+          });
+        } catch (trackError) {
+          console.error('MoEngage tracking error:', trackError);
+        }
       }
-
+      
       localStorage.setItem('currentUser', JSON.stringify({
         id: userId,
         email: formData.email,
         loginMethod: 'email'
       }));
-
+      
       alert('Login successful! 🎉');
       navigate('/home');
     } catch (error) {
@@ -484,38 +515,68 @@ export default function Join() {
     }
   };
 
-  // 🎯 Handle Email Registration
+  // 🎯 Handle Registration
   const handleRegister = async (e) => {
     e.preventDefault();
+    
     if (formData.password !== formData.confirmPassword) {
       alert('Passwords do not match!');
       return;
     }
-    if (!formData.fullName || !formData.email || !formData.password) {
+    
+    if (!formData.firstName || !formData.lastName || !formData.email || !formData.password) {
       alert('Please fill all required fields!');
       return;
     }
+
+    if (formData.mobile && !/^[\+]?[\d\s\-\(\)]{10,}$/.test(formData.mobile)) {
+      alert('Please enter a valid mobile number!');
+      return;
+    }
+
     try {
+      console.log('Registration attempt:', formData);
       const userId = formData.email;
-      moEngageLogin(userId, { 
+      const fullName = `${formData.firstName} ${formData.lastName}`.trim();
+      
+      await moEngageLogin(userId, { 
         email: formData.email,
-        name: formData.fullName 
+        mobile: formData.mobile || null,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        name: fullName,
+        birthday: formData.birthday || null,
+        gender: formData.gender || null
       });
-
+      
       if (window.Moengage) {
-        window.Moengage.track_event('user_registered', {
-          source: 'email_form',
-          registration_method: 'email'
-        });
+        try {
+          window.Moengage.track_event('user_registered', {
+            source: 'email_form',
+            registration_method: 'email',
+            user_email: formData.email,
+            user_name: fullName,
+            has_mobile: !!formData.mobile,
+            has_birthday: !!formData.birthday,
+            gender: formData.gender || 'not_specified'
+          });
+        } catch (trackError) {
+          console.error('MoEngage tracking error:', trackError);
+        }
       }
-
+      
       localStorage.setItem('currentUser', JSON.stringify({
         id: userId,
-        name: formData.fullName,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        name: fullName,
         email: formData.email,
+        mobile: formData.mobile,
+        birthday: formData.birthday,
+        gender: formData.gender,
         loginMethod: 'email'
       }));
-
+      
       alert('Account created successfully! 🎉');
       navigate('/home');
     } catch (error) {
@@ -524,46 +585,129 @@ export default function Join() {
     }
   };
 
-  // 🎯 Handle Google OAuth Success (store for redirect scenario)
-  const handleGoogleSuccess = (credentialResponse) => {
-    console.log('Google login success:', credentialResponse);
-    sessionStorage.setItem('postGoogleCredential', credentialResponse.credential); // save so it survives reload
-
-    // process immediately for popup/inline mode
+  // 🎯 Super Robust Google OAuth Success Handler
+  const handleGoogleSuccess = async (credentialResponse) => {
+    console.log('🚀 Google OAuth Success Response:', credentialResponse);
+    
     try {
-      const googleUser = decodeGoogleJWT(credentialResponse.credential);
-      if (googleUser) {
-        processGoogleUser(googleUser);
-        alert('Google login successful! Redirecting... 🚀');
-        navigate('/home');
+      // Check if we have the credential
+      if (!credentialResponse?.credential) {
+        throw new Error('No credential in response');
       }
+      
+      console.log('🔑 Processing Google credential...');
+      
+      const googleUser = decodeGoogleJWT(credentialResponse.credential);
+      
+      if (!googleUser) {
+        throw new Error('Failed to decode Google user data');
+      }
+      
+      // Extract user info with fallbacks
+      const userInfo = {
+        email: googleUser.email || '',
+        name: googleUser.name || `${googleUser.given_name || ''} ${googleUser.family_name || ''}`.trim(),
+        firstName: googleUser.given_name || '',
+        lastName: googleUser.family_name || '',
+        picture: googleUser.picture || '',
+        sub: googleUser.sub || '' // Google user ID
+      };
+      
+      console.log('👤 Processed Google user info:', userInfo);
+      
+      if (!userInfo.email) {
+        throw new Error('No email found in Google account');
+      }
+      
+      // Send to MoEngage
+      console.log('📊 Sending to MoEngage...');
+      await moEngageLogin(userInfo.email, {
+        email: userInfo.email,
+        name: userInfo.name,
+        firstName: userInfo.firstName,
+        lastName: userInfo.lastName
+      });
+      
+      // Track event
+      if (window.Moengage) {
+        try {
+          window.Moengage.track_event('user_login', {
+            login_method: 'google',
+            source: 'google_oauth',
+            user_email: userInfo.email,
+            user_name: userInfo.name,
+            has_picture: !!userInfo.picture
+          });
+          console.log('✅ MoEngage event tracked');
+        } catch (trackError) {
+          console.error('❌ MoEngage tracking error:', trackError);
+        }
+      }
+      
+      // Store in localStorage
+      const userData = {
+        id: userInfo.email,
+        email: userInfo.email,
+        name: userInfo.name,
+        firstName: userInfo.firstName,
+        lastName: userInfo.lastName,
+        picture: userInfo.picture,
+        googleId: userInfo.sub,
+        loginMethod: 'google'
+      };
+      
+      localStorage.setItem('currentUser', JSON.stringify(userData));
+      console.log('💾 User data stored:', userData);
+      
+      alert('Google login successful! Redirecting... 🚀');
+      navigate('/home');
+      
     } catch (error) {
-      console.error('Google login processing error:', error);
+      console.error('💥 Google login processing error:', error);
+      console.error('Error stack:', error.stack);
+      
+      // User-friendly error messages
+      let errorMessage = 'Google login failed. ';
+      if (error.message.includes('decode')) {
+        errorMessage += 'Unable to process Google account data.';
+      } else if (error.message.includes('email')) {
+        errorMessage += 'No email found in Google account.';
+      } else {
+        errorMessage += 'Please try again.';
+      }
+      
+      alert(errorMessage);
+      
+      // Track failure
+      if (window.Moengage) {
+        try {
+          window.Moengage.track_event('login_failed', {
+            login_method: 'google',
+            error_type: 'processing_error',
+            error_message: error.message
+          });
+        } catch (trackError) {
+          console.error('Failed to track error:', trackError);
+        }
+      }
     }
   };
 
-  // 🎯 After redirect from Google, process stored credential
-  useEffect(() => {
-    const savedCred = sessionStorage.getItem('postGoogleCredential');
-    if (savedCred) {
-      const googleUser = decodeGoogleJWT(savedCred);
-      if (googleUser) {
-        console.log("Processing saved Google login after redirect:", googleUser);
-        processGoogleUser(googleUser);
-        navigate('/home');
-      }
-      sessionStorage.removeItem('postGoogleCredential');
-    }
-  }, []);
-
+  // 🎯 Enhanced Google Error Handler
   const handleGoogleError = () => {
-    console.log('Google login failed');
+    console.error('🚫 Google OAuth Error');
+    
     if (window.Moengage) {
-      window.Moengage.track_event('login_failed', {
-        login_method: 'google',
-        error_type: 'google_oauth_error'
-      });
+      try {
+        window.Moengage.track_event('login_failed', {
+          login_method: 'google',
+          error_type: 'google_oauth_error'
+        });
+      } catch (trackError) {
+        console.error('Failed to track Google error:', trackError);
+      }
     }
+    
     alert('Google login failed. Please try again.');
   };
 
@@ -603,6 +747,8 @@ export default function Join() {
             width={350}
             text={isLogin ? "signin_with" : "signup_with"}
             shape="rectangular"
+            useOneTap={false}
+            auto_select={false}
           />
         </div>
 
@@ -613,66 +759,120 @@ export default function Join() {
           <div className="flex-grow border-t border-gray-300"></div>
         </div>
 
-        {/* Regular Form */}
-        <form 
-          className="space-y-4"
-          onSubmit={isLogin ? handleLogin : handleRegister}
-        >
-          {!isLogin && (
+        {/* Form Container */}
+        <div className="max-h-96 overflow-y-auto pr-2">
+          <form 
+            className="space-y-4"
+            onSubmit={isLogin ? handleLogin : handleRegister}
+          >
+            {!isLogin && (
+              <>
+                {/* Name Fields */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      First Name *
+                    </label>
+                    <input
+                      name="firstName"
+                      value={formData.firstName}
+                      onChange={handleInputChange}
+                      type="text"
+                      placeholder="John"
+                      className="w-full p-3 rounded-xl border border-gray-300 bg-white focus:border-purple-400 focus:ring-1 focus:ring-purple-200 outline-none transition-all duration-200 text-sm"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Last Name *
+                    </label>
+                    <input
+                      name="lastName"
+                      value={formData.lastName}
+                      onChange={handleInputChange}
+                      type="text"
+                      placeholder="Doe"
+                      className="w-full p-3 rounded-xl border border-gray-300 bg-white focus:border-purple-400 focus:ring-1 focus:ring-purple-200 outline-none transition-all duration-200 text-sm"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Mobile Number */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Mobile Number
+                  </label>
+                  <input
+                    name="mobile"
+                    value={formData.mobile}
+                    onChange={handleInputChange}
+                    type="tel"
+                    placeholder="+1 (555) 123-4567"
+                    className="w-full p-3 rounded-xl border border-gray-300 bg-white focus:border-purple-400 focus:ring-1 focus:ring-purple-200 outline-none transition-all duration-200"
+                  />
+                </div>
+
+                {/* Birthday & Gender */}
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Birthday
+                    </label>
+                    <input
+                      name="birthday"
+                      value={formData.birthday}
+                      onChange={handleInputChange}
+                      type="date"
+                      className="w-full p-3 rounded-xl border border-gray-300 bg-white focus:border-purple-400 focus:ring-1 focus:ring-purple-200 outline-none transition-all duration-200 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">
+                      Gender
+                    </label>
+                    <select
+                      name="gender"
+                      value={formData.gender}
+                      onChange={handleInputChange}
+                      className="w-full p-3 rounded-xl border border-gray-300 bg-white focus:border-purple-400 focus:ring-1 focus:ring-purple-200 outline-none transition-all duration-200 text-sm"
+                    >
+                      <option value="">Select</option>
+                      <option value="male">Male</option>
+                      <option value="female">Female</option>
+                      <option value="other">Other</option>
+                      <option value="prefer_not_to_say">Prefer not to say</option>
+                    </select>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Email */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name *
+                Email Address *
               </label>
               <input
-                name="fullName"
-                value={formData.fullName}
+                name="email"
+                value={formData.email}
                 onChange={handleInputChange}
-                type="text"
-                placeholder="Your full name"
+                type="email"
+                placeholder="you@example.com"
                 className="w-full p-4 rounded-xl border border-gray-300 bg-white focus:border-purple-400 focus:ring-1 focus:ring-purple-200 outline-none transition-all duration-200"
                 required
               />
             </div>
-          )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Email Address *
-            </label>
-            <input
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              type="email"
-              placeholder="you@example.com"
-              className="w-full p-4 rounded-xl border border-gray-300 bg-white focus:border-purple-400 focus:ring-1 focus:ring-purple-200 outline-none transition-all duration-200"
-              required
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Password *
-            </label>
-            <input
-              name="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              type="password"
-              placeholder="••••••••"
-              className="w-full p-4 rounded-xl border border-gray-300 bg-white focus:border-purple-400 focus:ring-1 focus:ring-purple-200 outline-none transition-all duration-200"
-              required
-            />
-          </div>
-
-          {!isLogin && (
+            {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Confirm Password *
+                Password *
               </label>
               <input
-                name="confirmPassword"
-                value={formData.confirmPassword}
+                name="password"
+                value={formData.password}
                 onChange={handleInputChange}
                 type="password"
                 placeholder="••••••••"
@@ -680,15 +880,33 @@ export default function Join() {
                 required
               />
             </div>
-          )}
 
-          <button
-            type="submit"
-            className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-pink-600 text-white py-4 rounded-xl font-semibold text-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-300"
-          >
-            {isLogin ? "Sign In ✨" : "Create Account 💎"}
-          </button>
-        </form>
+            {/* Confirm Password */}
+            {!isLogin && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Confirm Password *
+                </label>
+                <input
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleInputChange}
+                  type="password"
+                  placeholder="••••••••"
+                  className="w-full p-4 rounded-xl border border-gray-300 bg-white focus:border-purple-400 focus:ring-1 focus:ring-purple-200 outline-none transition-all duration-200"
+                  required
+                />
+              </div>
+            )}
+
+            <button
+              type="submit"
+              className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-pink-600 text-white py-4 rounded-xl font-semibold text-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-300"
+            >
+              {isLogin ? "Sign In ✨" : "Create Account 💎"}
+            </button>
+          </form>
+        </div>
 
         {/* Toggle Between Login/Register */}
         <div className="mt-6 text-center">
@@ -697,15 +915,26 @@ export default function Join() {
           </p>
           <button
             type="button"
-            onClick={() => setIsLogin(!isLogin)}
+            onClick={() => {
+              setIsLogin(!isLogin);
+              setFormData({
+                firstName: '',
+                lastName: '',
+                email: '',
+                mobile: '',
+                birthday: '',
+                gender: '',
+                password: '',
+                confirmPassword: ''
+              });
+            }}
             className="text-purple-600 hover:text-purple-800 font-semibold text-sm border-b-2 border-transparent hover:border-purple-400 transition-all duration-200"
           >
             {isLogin ? "Create Account" : "Sign In"}
           </button>
         </div>
 
-        {/* Footer */}
-        <div className="mt-6 text-center">
+        <div className="mt-4 text-center">
           <p className="text-xs text-gray-400">
             By continuing, you agree to our Terms & Privacy Policy
           </p>
