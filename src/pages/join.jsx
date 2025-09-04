@@ -1,4 +1,5 @@
-// src/pages/Join.jsx - COMPLETE WITH GOOGLE OAUTH + MOENGAGE INTEGRATION
+
+// src/pages/Join.jsx
 import React, { useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
@@ -33,7 +34,7 @@ const decodeGoogleJWT = (token) => {
 export default function Join() {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
-  
+
   // 🎯 Form State Management
   const [formData, setFormData] = useState({
     fullName: '',
@@ -52,20 +53,18 @@ export default function Join() {
   // 🎯 Handle Email Login
   const handleLogin = async (e) => {
     e.preventDefault();
-    
+
     try {
-      // Here you would normally validate credentials with your backend
       console.log('Login attempt:', { email: formData.email });
-      
-      // For demo purposes, assume login is successful
+
       const userId = formData.email;
-      
+
       // 🎯 MoEngage Login
       await moEngageLogin(userId, { 
         email: formData.email,
         name: formData.fullName 
       });
-      
+
       // Track login event
       if (window.Moengage) {
         window.Moengage.track_event('user_login', {
@@ -73,17 +72,17 @@ export default function Join() {
           login_method: 'email'
         });
       }
-      
+
       // Store user data
       localStorage.setItem('currentUser', JSON.stringify({
         id: userId,
         email: formData.email,
         loginMethod: 'email'
       }));
-      
+
       alert('Login successful! 🎉');
       navigate('/home');
-      
+
     } catch (error) {
       console.error('Login error:', error);
       alert('Login failed. Please try again.');
@@ -93,33 +92,31 @@ export default function Join() {
   // 🎯 Handle Email Registration
   const handleRegister = async (e) => {
     e.preventDefault();
-    
-    // Basic validation
+
     if (formData.password !== formData.confirmPassword) {
       alert('Passwords do not match!');
       return;
     }
-    
+
     if (!formData.fullName || !formData.email || !formData.password) {
       alert('Please fill all required fields!');
       return;
     }
-    
+
     try {
-      // Here you would normally create account with your backend
       console.log('Registration attempt:', { 
         name: formData.fullName, 
         email: formData.email 
       });
-      
+
       const userId = formData.email;
-      
+
       // 🎯 MoEngage Registration
       await moEngageLogin(userId, { 
         email: formData.email,
         name: formData.fullName 
       });
-      
+
       // Track registration event
       if (window.Moengage) {
         window.Moengage.track_event('user_registered', {
@@ -127,7 +124,7 @@ export default function Join() {
           registration_method: 'email'
         });
       }
-      
+
       // Store user data
       localStorage.setItem('currentUser', JSON.stringify({
         id: userId,
@@ -135,10 +132,10 @@ export default function Join() {
         email: formData.email,
         loginMethod: 'email'
       }));
-      
+
       alert('Account created successfully! 🎉');
       navigate('/home');
-      
+
     } catch (error) {
       console.error('Registration error:', error);
       alert('Registration failed. Please try again.');
@@ -148,28 +145,26 @@ export default function Join() {
   // 🎯 Handle Google OAuth Success
   const handleGoogleSuccess = async (credentialResponse) => {
     console.log('Google login success:', credentialResponse);
-    
+
     try {
-      // ✅ DECODE the actual Google user data
       const googleUser = decodeGoogleJWT(credentialResponse.credential);
-      
+
       if (googleUser) {
         console.log('Real Google user data:', googleUser);
-        
-        // ✅ Extract REAL user info from Google
+
         const realUserEmail = googleUser.email;
         const realUserName = googleUser.name;
         const realUserPicture = googleUser.picture;
         const realUserFirstName = googleUser.given_name;
         const realUserLastName = googleUser.family_name;
-        
-        // 🎯 MoEngage with REAL Google data
+
         await moEngageLogin(realUserEmail, { 
           email: realUserEmail,
           name: realUserName 
+          ,firstName: realUserFirstName,
+  lastName: realUserLastName
         });
-        
-        // Track Google login with real data
+
         if (window.Moengage) {
           window.Moengage.track_event('user_login', {
             login_method: 'google',
@@ -178,8 +173,7 @@ export default function Join() {
             user_name: realUserName
           });
         }
-        
-        // Store real user data for your app
+
         localStorage.setItem('currentUser', JSON.stringify({
           id: realUserEmail,
           email: realUserEmail,
@@ -189,19 +183,18 @@ export default function Join() {
           picture: realUserPicture,
           loginMethod: 'google'
         }));
-        
+
         alert('Google login successful! Redirecting... 🚀');
         navigate('/home');
-        
+
       } else {
         throw new Error('Failed to decode Google user data');
       }
-      
+
     } catch (error) {
       console.error('Google login processing error:', error);
       alert('Google login processing failed. Please try again.');
-      
-      // Track failed Google login
+
       if (window.Moengage) {
         window.Moengage.track_event('login_failed', {
           login_method: 'google',
@@ -213,15 +206,14 @@ export default function Join() {
 
   const handleGoogleError = () => {
     console.log('Google login failed');
-    
-    // 🎯 MoEngage: Track failed login
+
     if (window.Moengage) {
       window.Moengage.track_event('login_failed', {
         login_method: 'google',
         error_type: 'google_oauth_error'
       });
     }
-    
+
     alert('Google login failed. Please try again.');
   };
 
@@ -252,13 +244,13 @@ export default function Join() {
         </div>
 
         {/* Google OAuth Button */}
-        <div className="mb-6">
+        <div className="mb-6 flex justify-center">
           <GoogleLogin
             onSuccess={handleGoogleSuccess}
             onError={handleGoogleError}
             theme="outline"
             size="large"
-            width="100%"
+            width={350} // ✅ FIX: numeric value instead of "100%"
             text={isLogin ? "signin_with" : "signup_with"}
             shape="rectangular"
           />
@@ -276,7 +268,6 @@ export default function Join() {
           className="space-y-4"
           onSubmit={isLogin ? handleLogin : handleRegister}
         >
-          {/* Name - Only for Registration */}
           {!isLogin && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -294,7 +285,6 @@ export default function Join() {
             </div>
           )}
 
-          {/* Email */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Email Address *
@@ -310,7 +300,6 @@ export default function Join() {
             />
           </div>
 
-          {/* Password */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Password *
@@ -326,7 +315,6 @@ export default function Join() {
             />
           </div>
 
-          {/* Confirm Password - Only for Registration */}
           {!isLogin && (
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -344,7 +332,6 @@ export default function Join() {
             </div>
           )}
 
-          {/* Submit Button */}
           <button
             type="submit"
             className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-pink-600 text-white py-4 rounded-xl font-semibold text-lg shadow-md hover:shadow-lg transform hover:scale-105 transition-all duration-300"
@@ -367,7 +354,6 @@ export default function Join() {
           </button>
         </div>
 
-        {/* Footer */}
         <div className="mt-6 text-center">
           <p className="text-xs text-gray-400">
             By continuing, you agree to our Terms & Privacy Policy
