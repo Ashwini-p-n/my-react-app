@@ -1,0 +1,119 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Tailwind CSS Layout Examples</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+  </head>
+  <body class="bg-gray-50 p-4">
+    <!-- FLEXBOX LAYOUT -->
+    <!-- Note: space-x-4 only works with flex-row, not flex-col -->
+    <section class="mb-8">
+      <h2 class="mb-4 text-xl font-bold">Flexbox - Vertical Layout</h2>
+      <div class="mt-2 flex flex-col items-center justify-center space-y-4">
+        <div class="h-16 w-16 rounded-full bg-orange-600"></div>
+        <div class="h-16 w-16 rounded-full bg-blue-600"></div>
+        <div class="h-16 w-16 rounded-full bg-blue-600"></div>
+      </div>
+    </section>
+
+    <!-- GRID LAYOUT -->
+    <!-- mx-2 applies horizontal margin (left and right) -->
+    <section class="mb-8">
+      <h2 class="mb-4 text-xl font-bold">Grid Layout - 5 Columns</h2>
+      <div class="mx-2 mt-2 grid grid-cols-5 gap-2">
+        <div class="h-16 w-16 rounded-full bg-orange-600"></div>
+        <div class="h-16 w-16 rounded-full bg-blue-600"></div>
+        <div class="h-16 w-16 rounded-full bg-green-600"></div>
+        <div class="h-16 w-16 rounded-full bg-purple-600"></div>
+        <div class="h-16 w-16 rounded-full bg-red-600"></div>
+      </div>
+    </section>
+
+    <!-- RESPONSIVE VISIBILITY -->
+    <section class="mb-8">
+      <h2 class="mb-4 text-xl font-bold">Responsive Display</h2>
+
+      <!-- Hidden on mobile, visible on medium screens and up (768px+) -->
+      <div class="mb-4 hidden rounded bg-green-100 p-4 md:block">
+        <p class="font-medium text-black">✅ I appear on screens wider than 768px (md and larger)</p>
+        <p class="text-sm text-gray-600">hidden = display: none | md:block = display: block on md+</p>
+      </div>
+
+      <!-- Visible on mobile, hidden on medium screens and up -->
+      <div class="mb-4 block rounded bg-blue-100 p-4 md:hidden">
+        <p class="font-medium text-black">📱 I appear only on mobile and small tablets (below 768px)</p>
+        <p class="text-sm text-gray-600">block = always visible | md:hidden = hide on md+</p>
+      </div>
+    </section>
+
+    <!-- RESPONSIVE BACKGROUND COLORS -->
+    <section class="mb-8">
+      <h2 class="mb-4 text-xl font-bold">Responsive Background Colors</h2>
+
+      <!-- Changes background based on screen size -->
+      <div class="mb-4 rounded bg-amber-300 p-4 sm:bg-amber-500 md:bg-amber-700 lg:bg-red-500">
+        <p class="font-medium text-white">🎨 My background changes with screen size</p>
+        <div class="mt-2 text-sm text-gray-100">
+          <p>• Mobile (default): Light amber</p>
+          <p>• Small (640px+): Medium amber</p>
+          <p>• Medium (768px+): Dark amber</p>
+          <p>• Large (1024px+): Red</p>
+        </div>
+      </div>
+
+      <!-- Using max-width breakpoints (works in reverse) -->
+      <div class="mb-4 rounded bg-blue-300 p-4 max-md:bg-green-500 max-sm:bg-purple-500">
+        <p class="font-medium text-white">🔄 Using max-width breakpoints (reverse logic)</p>
+        <div class="mt-2 text-sm text-gray-100">
+          <p>• Very small screens (below 640px): Purple</p>
+          <p>• Small to medium (640px-768px): Green</p>
+          <p>• Large screens (768px+): Blue</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAILWIND BREAKPOINT GUIDE -->
+    <section class="mb-8">
+      <h2 class="mb-4 text-xl font-bold">📋 Tailwind Breakpoint Reference</h2>
+      <div class="rounded-lg bg-white p-6 shadow-md">
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+          <div>
+            <h3 class="mb-2 font-semibold text-gray-800">Standard Breakpoints:</h3>
+            <ul class="space-y-1 text-sm">
+              <li><code class="rounded bg-gray-200 px-2 py-1">sm:</code> 640px and up</li>
+              <li><code class="rounded bg-gray-200 px-2 py-1">md:</code> 768px and up</li>
+              <li><code class="rounded bg-gray-200 px-2 py-1">lg:</code> 1024px and up</li>
+              <li><code class="rounded bg-gray-200 px-2 py-1">xl:</code> 1280px and up</li>
+              <li><code class="rounded bg-gray-200 px-2 py-1">2xl:</code> 1536px and up</li>
+            </ul>
+          </div>
+          <div>
+            <h3 class="mb-2 font-semibold text-gray-800">Max-width Breakpoints:</h3>
+            <ul class="space-y-1 text-sm">
+              <li><code class="rounded bg-gray-200 px-2 py-1">max-sm:</code> below 640px</li>
+              <li><code class="rounded bg-gray-200 px-2 py-1">max-md:</code> below 768px</li>
+              <li><code class="rounded bg-gray-200 px-2 py-1">max-lg:</code> below 1024px</li>
+              <li><code class="rounded bg-gray-200 px-2 py-1">max-xl:</code> below 1280px</li>
+              <li><code class="rounded bg-gray-200 px-2 py-1">max-2xl:</code> below 1536px</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- IMPORTANT NOTES -->
+    <section>
+      <h2 class="mb-4 text-xl font-bold">⚠️ Important Notes</h2>
+      <div class="border-l-4 border-yellow-400 bg-yellow-50 p-4">
+        <ul class="space-y-2 text-sm">
+          <li><strong>Mobile-first:</strong> Classes without prefixes apply to all screen sizes. Use <code>sm:</code>, <code>md:</code> etc. to override on larger screens.</li>
+          <li><strong>Space utilities:</strong> <code>space-x-4</code> works with flex-row, use <code>space-y-4</code> for flex-col.</li>
+          <li><strong>Mobile styling:</strong> Don't use <code>sm:</code> for mobile. Mobile styles are the default (no prefix needed).</li>
+          <li><strong>Max-width:</strong> <code>max-md:</code> means "apply this style up to medium screens" (reverse of normal breakpoints).</li>
+        </ul>
+      </div>
+    </section>
+  </body>
+</html>
