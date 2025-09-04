@@ -1,21 +1,43 @@
-// src/pages/Join.jsx
+// src/pages/Join.jsx - WITH GOOGLE OAUTH INTEGRATION
 import React, { useState } from "react";
-// React hook to manage component state (like switching between login/register)
 import { useNavigate } from 'react-router-dom';
-// React Router hook to programmatically change pages (like redirecting after login)
+import { GoogleLogin } from '@react-oauth/google';
+
 export default function Join() {
   const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
-// setIsLogin:function to toggle between login/register
+
   const handleLogin = (e) => {
     e.preventDefault();
     // Here you would normally validate credentials
-    navigate('/Home'); }
+    navigate('/home'); // Fixed: lowercase 'h'
+  };
 
   const handleRegister = (e) => {
     e.preventDefault();
     // Here you would normally create account
-    navigate('/Home'); // Navigate to home after registration too
+    navigate('/home'); // Fixed: lowercase 'h'
+  };
+
+  // Handle Google OAuth Success
+  const handleGoogleSuccess = (credentialResponse) => {
+    console.log('Google login success:', credentialResponse);
+    
+    // Here you would:
+    // 1. Send the credential to your backend
+    // 2. Verify the token
+    // 3. Create/login user
+    // 4. Store auth token
+    // 5. Redirect to home
+    
+    // For now, just navigate to home
+    alert('Google login successful! Redirecting...');
+    navigate('/home');
+  };
+
+  const handleGoogleError = () => {
+    console.log('Google login failed');
+    alert('Google login failed. Please try again.');
   };
 
   return (
@@ -27,7 +49,7 @@ export default function Join() {
         backgroundPosition: 'center',
       }}
     >
-      <div className="bg-white/80 backdrop-blur-md rounded-3xl shadow-2xl p-10 max-w-md w-full border border-gray-200 transform hover:scale-[1.02] transition-transform duration-300">
+      <div className="bg-white/90 backdrop-blur-md rounded-3xl shadow-2xl p-10 max-w-md w-full border border-gray-200 transform hover:scale-[1.02] transition-transform duration-300">
         
         {/* Header */}
         <div className="text-center mb-6">
@@ -44,10 +66,30 @@ export default function Join() {
           </p>
         </div>
 
-        {/* Form - ✅ Fixed onSubmit handler */}
+        {/* Google OAuth Button */}
+        <div className="mb-6">
+          <GoogleLogin
+            onSuccess={handleGoogleSuccess}
+            onError={handleGoogleError}
+            theme="outline"
+            size="large"
+            width="100%"
+            text={isLogin ? "signin_with" : "signup_with"}
+            shape="rectangular"
+          />
+        </div>
+
+        {/* Divider */}
+        <div className="flex items-center mb-6">
+          <div className="flex-grow border-t border-gray-300"></div>
+          <span className="flex-shrink-0 px-4 text-gray-500 text-sm">or continue with email</span>
+          <div className="flex-grow border-t border-gray-300"></div>
+        </div>
+
+        {/* Regular Form */}
         <form 
           className="space-y-4"
-          onSubmit={isLogin ? handleLogin : handleRegister} // ✅ Use correct handler
+          onSubmit={isLogin ? handleLogin : handleRegister}
           key={isLogin ? 'login' : 'register'}
         >
           {/* Name */}
@@ -127,6 +169,13 @@ export default function Join() {
           >
             {isLogin ? "Create Account" : "Sign In"}
           </button>
+        </div>
+
+        {/* Footer */}
+        <div className="mt-6 text-center">
+          <p className="text-xs text-gray-400">
+            By continuing, you agree to our Terms & Privacy Policy
+          </p>
         </div>
       </div>
     </div>
