@@ -1,4 +1,3 @@
-
 // src/pages/ProductCollection.jsx
 import React, { useState, useEffect } from 'react'; // ✅ Add missing imports
 import { useParams, useNavigate } from 'react-router-dom';
@@ -16,22 +15,18 @@ export default function ProductCollection() {
   // Smart triggers for push opt-in
   useEffect(() => {
     const shouldShowPushOptIn = () => {
-       // Check if user already gave permission
-  if (Notification.permission === 'granted') return false;
-  if (Notification.permission === 'denied') return false;
-  
-  // Check if user already saw prompt recently - make it per user session
-  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-  const userKey = `push_optIn_last_shown_${currentUser.email || 'anonymous'}`;
-  const lastShown = localStorage.getItem(userKey);
-  
-  if (lastShown) {
-    const hoursince = (Date.now() - parseInt(lastShown)) / (1000 * 60 * 60);
-    if (hoursince < 1) return false; // Don't show again for 1 hour (instead of 7 days)
-  }
-  
-  return true;
-    
+      // Check if user already gave permission
+      if (Notification.permission === 'granted') return false;
+      if (Notification.permission === 'denied') return false;
+      
+      // Check if user already saw prompt recently
+      const lastShown = localStorage.getItem('push_optIn_last_shown');
+      if (lastShown) {
+        const daysSince = (Date.now() - parseInt(lastShown)) / (1000 * 60 * 60 * 24);
+        if (daysSince < 7) return false; // Don't show again for 7 days
+      }
+      
+      return true;
     };
 
     // Trigger scenarios
@@ -60,17 +55,15 @@ export default function ProductCollection() {
       // On second page visit
       onReturnVisit: () => {
         const visitCount = parseInt(localStorage.getItem('visit_count') || '0');
-  if (visitCount >= 1 && shouldShowPushOptIn()) { // Changed from 2 to 1
-    setTimeout(() => setShowPushPrompt(true), 2000); 
+        if (visitCount >= 2 && shouldShowPushOptIn()) {
+          setTimeout(() => setShowPushPrompt(true), 3000);
         }
       }
     };
 
     // Track visits
     const visitCount = parseInt(localStorage.getItem('visit_count') || '0');
-    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-const userKey = `push_optIn_last_shown_${currentUser.email || 'anonymous'}`;
-localStorage.setItem(userKey, Date.now().toString());
+    localStorage.setItem('visit_count', (visitCount + 1).toString());
     
     // Check for return visit trigger
     triggers.onReturnVisit();
@@ -394,22 +387,6 @@ localStorage.setItem(userKey, Date.now().toString());
               <button className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all">
                 <span className="text-xl">❤️</span>
               </button>
-              {/* Add this button temporarily for testing */}
-<button 
-  onClick={() => {
-    // Clear all push opt-in data for testing
-    Object.keys(localStorage).forEach(key => {
-      if (key.includes('push_optIn_last_shown')) {
-        localStorage.removeItem(key);
-      }
-    });
-    localStorage.removeItem('visit_count');
-    setShowPushPrompt(true);
-  }}
-  className="bg-red-500 text-white px-2 py-1 rounded text-xs"
->
-  Test Push
-</button>
             </div>
           </div>
         </div>
