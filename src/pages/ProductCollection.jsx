@@ -1,5 +1,6 @@
+
 // src/pages/ProductCollection.jsx
-import React from 'react';
+import React, { useState, useEffect } from 'react'; // ✅ Add missing imports
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import myLogo from "../assets/download.jpeg";
@@ -7,7 +8,103 @@ import myLogo from "../assets/download.jpeg";
 export default function ProductCollection() {
   const { category } = useParams();
   const navigate = useNavigate();
-   const { addToCart, getCartCount } = useCart();
+  const { addToCart, getCartCount } = useCart();
+  
+  // ✅ Add useState for showPushPrompt
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
+
+  // Smart triggers for push opt-in
+  useEffect(() => {
+    const shouldShowPushOptIn = () => {
+       // Check if user already gave permission
+  if (Notification.permission === 'granted') return false;
+  if (Notification.permission === 'denied') return false;
+  
+  // Check if user already saw prompt recently - make it per user session
+  const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+  const userKey = `push_optIn_last_shown_${currentUser.email || 'anonymous'}`;
+  const lastShown = localStorage.getItem(userKey);
+  
+  if (lastShown) {
+    const hoursince = (Date.now() - parseInt(lastShown)) / (1000 * 60 * 60);
+    if (hoursince < 1) return false; // Don't show again for 1 hour (instead of 7 days)
+  }
+  
+  return true;
+    
+    };
+
+    // Trigger scenarios
+    const triggers = {
+      // After user adds item to cart
+      onAddToCart: () => {
+        if (shouldShowPushOptIn()) {
+          setTimeout(() => setShowPushPrompt(true), 2000);
+        }
+      },
+      
+      // After viewing engagement rings
+      onEngagementRingView: () => {
+        if (shouldShowPushOptIn() && category === 'rings') {
+          setTimeout(() => setShowPushPrompt(true), 5000);
+        }
+      },
+      
+      // After adding to wishlist
+      onWishlistAdd: () => {
+        if (shouldShowPushOptIn()) {
+          setShowPushPrompt(true);
+        }
+      },
+      
+      // On second page visit
+      onReturnVisit: () => {
+        const visitCount = parseInt(localStorage.getItem('visit_count') || '0');
+  if (visitCount >= 1 && shouldShowPushOptIn()) { // Changed from 2 to 1
+    setTimeout(() => setShowPushPrompt(true), 2000); 
+        }
+      }
+    };
+
+    // Track visits
+    const visitCount = parseInt(localStorage.getItem('visit_count') || '0');
+    const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+const userKey = `push_optIn_last_shown_${currentUser.email || 'anonymous'}`;
+localStorage.setItem(userKey, Date.now().toString());
+    
+    // Check for return visit trigger
+    triggers.onReturnVisit();
+    
+  }, [category]);
+
+  // Handle push opt-in
+  const handlePushOptIn = (allow = true) => {
+    setShowPushPrompt(false);
+    
+    // Mark as shown
+    localStorage.setItem('push_optIn_last_shown', Date.now().toString());
+    
+    if (allow && window.Moengage) {
+      // Show browser's native permission request
+      window.Moengage.call_web_push();
+      
+      // Track event
+      window.Moengage.track_event('push_optIn_accepted', {
+        source: 'custom_soft_ask',
+        page: window.location.pathname,
+        user_email: JSON.parse(localStorage.getItem('currentUser') || '{}').email
+      });
+    } else {
+      // Track dismissal
+      if (window.Moengage) {
+        window.Moengage.track_event('push_optIn_dismissed', {
+          source: 'custom_soft_ask',
+          page: window.location.pathname
+        });
+      }
+    }
+  };
+
   // Sample products data for different categories
   const productsData = {
     rings: [
@@ -282,22 +379,38 @@ export default function ProductCollection() {
                 </div>
               </div>
             </div>
-
+            
             {/* User Menu */}
-             <div className="flex items-center space-x-4">
-    <button 
-      onClick={() => navigate('/cart')}
-      className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all relative"
-    >
-      <span className="text-xl">🛍️</span>
-      <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-        {getCartCount()}
-      </span>
-    </button>
-    <button className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all">
-      <span className="text-xl">❤️</span>
-    </button>
-  </div>
+            <div className="flex items-center space-x-4">
+              <button 
+                onClick={() => navigate('/cart')}
+                className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all relative"
+              >
+                <span className="text-xl">🛍️</span>
+                <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {getCartCount()}
+                </span>
+              </button>
+              <button className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all">
+                <span className="text-xl">❤️</span>
+              </button>
+              {/* Add this button temporarily for testing */}
+<button 
+  onClick={() => {
+    // Clear all push opt-in data for testing
+    Object.keys(localStorage).forEach(key => {
+      if (key.includes('push_optIn_last_shown')) {
+        localStorage.removeItem(key);
+      }
+    });
+    localStorage.removeItem('visit_count');
+    setShowPushPrompt(true);
+  }}
+  className="bg-red-500 text-white px-2 py-1 rounded text-xs"
+>
+  Test Push
+</button>
+            </div>
           </div>
         </div>
       </header>
@@ -400,77 +513,78 @@ export default function ProductCollection() {
                     </div>
                     
                     {/* Add to Cart Button */}
-                    {/* Add to Cart Button */}
-<div className="flex space-x-2">
-  <button 
-    onClick={() => {
-      // Add to cart first
-      addToCart(product);
-      
-      // 🎯 MoEngage Add to Cart Event Tracking
-      if (window.Moengage) {
-        try {
-          // Get current user data
-          const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
-          
-          // Track Add to Cart event with detailed attributes
-          window.Moengage.track_event("Add_to_Cartt", {
-            // Product Details
-            "product_id": product.id,
-            "product_name": product.name,
-            "product_category": category, // rings, necklaces, etc.
-            "product_price": product.price,
-            "product_original_price": product.originalPrice,
-            "product_discount": product.originalPrice - product.price,
-            "product_discount_percentage": Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100),
-            "product_rating": product.rating,
-            "product_stock": product.inStock,
-            "product_description": product.description,
-            "has_discount": product.originalPrice > product.price,
-            "currency": "USD",
-            
-            // User Context
-            "user_email": currentUser.email || 'unknown',
-            "user_name": currentUser.name || 'unknown',
-            "user_login_method": currentUser.loginMethod || 'unknown',
-            
-            // Shopping Context  
-            "current_cart_count": getCartCount() + 1, // After adding this item
-            "category_viewed": category,
-            "page_url": window.location.href,
-            "timestamp": new Date(),
-            
-            // Engagement Metrics
-            "is_sale_item": product.originalPrice > product.price,
-            "price_range": product.price < 1000 ? 'budget' : product.price < 3000 ? 'mid_range' : 'luxury',
-            "product_availability": product.inStock > 10 ? 'high' : product.inStock > 0 ? 'low' : 'out_of_stock'
-          });
-          
-          console.log('✅ MoEngage Add to Cart event tracked:', {
-            product: product.name,
-            category: category,
-            price: product.price,
-            user: currentUser.email
-          });
-          
-        } catch (error) {
-          console.error('❌ MoEngage Add to Cart tracking failed:', error);
-        }
-      }
-      
-      // Show success message
-      alert(`${product.name} added to cart! 🎉`);
-    }}
-    className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-2xl font-semibold hover:scale-105 transform transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-    disabled={product.inStock === 0}
-  >
-    {product.inStock > 0 ? 'Add to Cart' : 'Out of Stock'}
-  </button>
-  <button className="bg-gray-100 hover:bg-gray-200 p-3 rounded-2xl transition-colors">
-    👁️
-  </button>
-</div>
-         </div>
+                    <div className="flex space-x-2">
+                      <button 
+                        onClick={() => {
+                          // Add to cart first
+                          addToCart(product);
+                          
+                          // 🎯 MoEngage Add to Cart Event Tracking
+                          if (window.Moengage) {
+                            try {
+                              // Get current user data
+                              const currentUser = JSON.parse(localStorage.getItem('currentUser') || '{}');
+                              
+                              // Track Add to Cart event with detailed attributes
+                              window.Moengage.track_event("Add_to_Cart", { // ✅ Fixed event name
+                                // Product Details
+                                "product_id": product.id,
+                                "product_name": product.name,
+                                "product_category": category,
+                                "product_price": product.price,
+                                "product_original_price": product.originalPrice,
+                                "product_discount": product.originalPrice - product.price,
+                                "product_discount_percentage": Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100),
+                                "product_rating": product.rating,
+                                "product_stock": product.inStock,
+                                "product_description": product.description,
+                                "has_discount": product.originalPrice > product.price,
+                                "currency": "USD",
+                                
+                                // User Context
+                                "user_email": currentUser.email || 'unknown',
+                                "user_name": currentUser.name || 'unknown',
+                                "user_login_method": currentUser.loginMethod || 'unknown',
+                                
+                                // Shopping Context  
+                                "current_cart_count": getCartCount() + 1,
+                                "category_viewed": category,
+                                "page_url": window.location.href,
+                                "timestamp": new Date(),
+                                
+                                // Engagement Metrics
+                                "is_sale_item": product.originalPrice > product.price,
+                                "price_range": product.price < 1000 ? 'budget' :
+                                               product.price < 3000 ? 'mid_range' : 'luxury',
+                                "product_availability": product.inStock > 10 ? 'high' :
+                                                       product.inStock > 0 ? 'low' : 'out_of_stock'
+                              });
+                              
+                              console.log('✅ MoEngage Add to Cart event tracked:', {
+                                product: product.name,
+                                category: category,
+                                price: product.price,
+                                user: currentUser.email
+                              });
+                              
+                            } catch (error) {
+                              console.error('❌ MoEngage Add to Cart tracking failed:', error);
+                            }
+                          }
+                          
+                          // Show success message
+                          alert(`${product.name} added to cart! 🎉`);
+                        }}
+                        className="flex-1 bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-2xl font-semibold hover:scale-105 transform transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                        disabled={product.inStock === 0}
+                      >
+                        {product.inStock > 0 ? 'Add to Cart' : 'Out of Stock'}
+                      </button>
+                      <button className="bg-gray-100 hover:bg-gray-200 p-3 rounded-2xl transition-colors">
+                        👁️
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ))}
             </div>
@@ -494,6 +608,53 @@ export default function ProductCollection() {
         </div>
       </section>
 
+      {/* Custom Push Notification Opt-in Modal */}
+      {showPushPrompt && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-3xl p-8 max-w-md mx-4 shadow-2xl">
+            <div className="text-center">
+              <div className="text-6xl mb-4">🔔</div>
+              <h3 className="text-2xl font-serif font-bold text-gray-800 mb-3">
+                Never Miss Exclusive Deals!
+              </h3>
+              <p className="text-gray-600 mb-6">
+                Get instant alerts for flash sales, new collections, and price drops on your wishlist items.
+              </p>
+              
+              <div className="space-y-3 mb-6">
+                <div className="flex items-center text-sm text-gray-700">
+                  <span className="text-xl mr-3">💍</span>
+                  <span>New engagement ring collections</span>
+                </div>
+                <div className="flex items-center text-sm text-gray-700">
+                  <span className="text-xl mr-3">⚡</span>
+                  <span>Flash sales up to 50% off</span>
+                </div>
+                <div className="flex items-center text-sm text-gray-700">
+                  <span className="text-xl mr-3">❤️</span>
+                  <span>Wishlist item price drops</span>
+                </div>
+              </div>
+              
+              <div className="flex space-x-3">
+                <button
+                  onClick={() => handlePushOptIn(false)}
+                  className="flex-1 py-3 px-4 bg-gray-100 text-gray-700 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
+                >
+                  Maybe Later
+                </button>
+                <button
+                  onClick={() => handlePushOptIn(true)}
+                  className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-500 to-pink-500 text-white rounded-xl font-semibold hover:scale-105 transform transition-all"
+                >
+                  Yes, I Want Deals! 🎉
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Footer */}
       <footer className="bg-gray-900 text-white py-8 mt-12">
         <div className="max-w-7xl mx-auto px-4 text-center">
@@ -504,7 +665,7 @@ export default function ProductCollection() {
             <h3 className="text-xl font-serif font-bold">Sparkle & Co</h3>
           </div>
           <p className="text-gray-400 text-sm">
-            © 2024 Sparkle & Co. All rights reserved. Made with 💎 for jewellery lovers.
+            © 2024 Sparkle & Co. All rights reserved. Made with �💎 for jewellery lovers.
           </p>
         </div>
       </footer>

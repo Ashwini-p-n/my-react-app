@@ -1,0 +1,1 @@
+importScripts("https://cdn.moengage.com/release/dc_3/versions/2/serviceworker_cdn.min.latest.js?_gl=1*1ffvm07*_gcl_au*NDQ5MjgwNTAxLjE3NTQzNzgyMDMuMTUzNDY1NzQzLjE3NTY5NzA0MzIuMTc1Njk3MDQzNg..*FPAU*NDQ5MjgwNTAxLjE3NTQzNzgyMDM.*_ga*MTA5MDE0MTg5LjE3NTQzNzgyMDM.*_ga_SEBHW7YTZ7*czE3NTcwNDcyMzMkbzE2JGcxJHQxNzU3MDQ4OTIwJGo2MCRsMCRoMA..")
