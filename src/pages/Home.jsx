@@ -100,6 +100,25 @@ export default function Home() {
                 <span className="text-xl">❤️</span>
               </button>
               
+<div className="flex items-center space-x-4">
+  <button 
+    onClick={() => navigate('/cart')}
+    className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all relative"
+  >
+    <span className="text-xl">🛍️</span>
+    <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+      {getCartCount()}
+    </span>
+  </button>
+  
+  {/* 👤 Profile Link */}
+  <button 
+    onClick={() => navigate('/profile')}
+    className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all"
+  >
+    <span className="text-xl">👤</span>
+  </button>
+</div>
               {/* User Profile */}
               <div className="bg-purple-100 p-2 rounded-full hover:bg-purple-200 transition-colors cursor-pointer">
                 <span className="text-sm">👤</span>

@@ -1,9 +1,44 @@
-// src/pages/Join.jsx
-// src/pages/Join.jsx
-// src/pages/Join.jsx
+
+// src/pages/join.jsx
 import React, { useState } from "react";
 import { useNavigate } from 'react-router-dom';
 import { GoogleLogin } from '@react-oauth/google';
+import { jsonHandler } from '../utils/jsonFileHandler';
+
+// 📊 Enhanced tracking function with JSON storage
+const trackUserEvent = async (eventName, eventData, userEmail, userInfo = {}) => {
+  // 1. Send to MoEngage (existing)
+  if (window.Moengage) {
+    try {
+      window.Moengage.track_event(eventName, eventData);
+      console.log('✅ Event sent to MoEngage:', eventName);
+    } catch (error) {
+      console.error('❌ MoEngage tracking error:', error);
+    }
+  }
+  
+  // 2. Store locally for profile display (existing)
+  const trackingEntry = {
+    event: eventName,
+    data: eventData,
+    timestamp: new Date().toISOString(),
+    userEmail: userEmail
+  };
+  
+  const userEvents = JSON.parse(localStorage.getItem('userMoEngageEvents') || '[]');
+  userEvents.push(trackingEntry);
+  localStorage.setItem('userMoEngageEvents', JSON.stringify(userEvents.slice(-50)));
+  
+  // 3. Store in JSON file (NEW)
+  try {
+    await jsonHandler.addUserEvent(userEmail, eventName, eventData, userInfo);
+    console.log('💾 Event saved to JSON file:', eventName);
+  } catch (error) {
+    console.error('❌ JSON file save error:', error);
+  }
+  
+  console.log('✅ Event tracked across all systems:', eventName);
+};
 
 // 🎯 Fixed MoEngage Helper Function
 const moEngageLogin = async (userId, userInfo = {}) => {
@@ -61,6 +96,7 @@ const decodeGoogleJWT = (token) => {
     }
     
     const parts = token.split('.');
+    
     if (parts.length !== 3) {
       throw new Error('Invalid JWT format');
     }
@@ -120,20 +156,22 @@ export default function Join() {
       console.log('Login attempt:', { email: formData.email });
       const userId = formData.email;
       
-      await moEngageLogin(userId, { 
-        email: formData.email
-      });
+      const userInfo = {
+        email: formData.email,
+        loginMethod: 'email'
+      };
       
-      if (window.Moengage) {
-        try {
-          window.Moengage.track_event('user_login', {
-            source: 'email_form',
-            login_method: 'email'
-          });
-        } catch (trackError) {
-          console.error('MoEngage tracking error:', trackError);
-        }
-      }
+      await moEngageLogin(userId, userInfo);
+      
+      const loginEventData = {
+        source: 'email_form',
+        login_method: 'email',
+        user_email: formData.email,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Track login event with JSON storage
+      await trackUserEvent('user_login', loginEventData, formData.email, userInfo);
       
       localStorage.setItem('currentUser', JSON.stringify({
         id: userId,
@@ -149,7 +187,7 @@ export default function Join() {
     }
   };
 
-  // 🎯 Handle Registration
+  // 🎯 Handle Registration with JSON Storage
   const handleRegister = async (e) => {
     e.preventDefault();
     
@@ -162,7 +200,7 @@ export default function Join() {
       alert('Please fill all required fields!');
       return;
     }
-
+    
     if (formData.mobile && !/^[\+]?[\d\s\-\(\)]{10,}$/.test(formData.mobile)) {
       alert('Please enter a valid mobile number!');
       return;
@@ -173,31 +211,35 @@ export default function Join() {
       const userId = formData.email;
       const fullName = `${formData.firstName} ${formData.lastName}`.trim();
       
-      await moEngageLogin(userId, { 
+      // Prepare comprehensive user info for JSON storage
+      const userInfo = {
         email: formData.email,
         mobile: formData.mobile || null,
         firstName: formData.firstName,
         lastName: formData.lastName,
         name: fullName,
         birthday: formData.birthday || null,
-        gender: formData.gender || null
-      });
+        gender: formData.gender || null,
+        loginMethod: 'email'
+      };
       
-      if (window.Moengage) {
-        try {
-          window.Moengage.track_event('user_registered', {
-            source: 'email_form',
-            registration_method: 'email',
-            user_email: formData.email,
-            user_name: fullName,
-            has_mobile: !!formData.mobile,
-            has_birthday: !!formData.birthday,
-            gender: formData.gender || 'not_specified'
-          });
-        } catch (trackError) {
-          console.error('MoEngage tracking error:', trackError);
-        }
-      }
+      await moEngageLogin(userId, userInfo);
+      
+      const registrationEventData = {
+        source: 'email_form',
+        registration_method: 'email',
+        user_email: formData.email,
+        user_name: fullName,
+        has_mobile: !!formData.mobile,
+        has_birthday: !!formData.birthday,
+        gender: formData.gender || 'not_specified',
+        mobile: formData.mobile,
+        birthday: formData.birthday,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Track registration event with complete user info for JSON storage
+      await trackUserEvent('user_registered', registrationEventData, formData.email, userInfo);
       
       localStorage.setItem('currentUser', JSON.stringify({
         id: userId,
@@ -211,7 +253,7 @@ export default function Join() {
         loginMethod: 'email'
       }));
       
-      alert('Account created successfully! 🎉');
+      alert('Account created successfully! 🎉\n\nYour data has been saved to JSON file.');
       navigate('/home');
     } catch (error) {
       console.error('Registration error:', error);
@@ -244,7 +286,8 @@ export default function Join() {
         firstName: googleUser.given_name || '',
         lastName: googleUser.family_name || '',
         picture: googleUser.picture || '',
-        sub: googleUser.sub || '' // Google user ID
+        sub: googleUser.sub || '', // Google user ID
+        loginMethod: 'google'
       };
       
       console.log('👤 Processed Google user info:', userInfo);
@@ -255,28 +298,20 @@ export default function Join() {
       
       // Send to MoEngage
       console.log('📊 Sending to MoEngage...');
-      await moEngageLogin(userInfo.email, {
-        email: userInfo.email,
-        name: userInfo.name,
-        firstName: userInfo.firstName,
-        lastName: userInfo.lastName
-      });
+      await moEngageLogin(userInfo.email, userInfo);
       
-      // Track event
-      if (window.Moengage) {
-        try {
-          window.Moengage.track_event('user_login', {
-            login_method: 'google',
-            source: 'google_oauth',
-            user_email: userInfo.email,
-            user_name: userInfo.name,
-            has_picture: !!userInfo.picture
-          });
-          console.log('✅ MoEngage event tracked');
-        } catch (trackError) {
-          console.error('❌ MoEngage tracking error:', trackError);
-        }
-      }
+      const googleLoginEventData = {
+        login_method: 'google',
+        source: 'google_oauth',
+        user_email: userInfo.email,
+        user_name: userInfo.name,
+        has_picture: !!userInfo.picture,
+        google_id: userInfo.sub,
+        timestamp: new Date().toISOString()
+      };
+      
+      // Track Google login with JSON storage
+      await trackUserEvent('user_login', googleLoginEventData, userInfo.email, userInfo);
       
       // Store in localStorage
       const userData = {
@@ -293,7 +328,7 @@ export default function Join() {
       localStorage.setItem('currentUser', JSON.stringify(userData));
       console.log('💾 User data stored:', userData);
       
-      alert('Google login successful! Redirecting... 🚀');
+      alert('Google login successful! Data saved to JSON file. Redirecting... 🚀');
       navigate('/home');
       
     } catch (error) {
@@ -498,7 +533,7 @@ export default function Join() {
                 required
               />
             </div>
-
+   
             {/* Password */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
