@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react'; // ✅ Add missing imports
 import { useParams, useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import myLogo from "../assets/download.jpeg";
-
+import moengage from "@moengage/web-sdk";
 export default function ProductCollection() {
   const { category } = useParams();
   const navigate = useNavigate();
@@ -82,11 +82,37 @@ export default function ProductCollection() {
       window.Moengage.call_web_push();
       
       // Track event
-      window.Moengage.track_event('push_optIn_accepted', {
-        source: 'custom_soft_ask',
-        page: window.location.pathname,
-        user_email: JSON.parse(localStorage.getItem('currentUser') || '{}').email
-      });
+      // window.Moengage.track_event('push_optIn_accepted', {
+      //   source: 'custom_soft_ask',
+      //   page: window.location.pathname,
+      //   user_email: JSON.parse(localStorage.getItem('currentUser') || '{}').email
+      // });
+      moengage.track_event("Add_to_Cart", {
+      product_id: product.id,
+      product_name: product.name,
+      product_category: category,
+      product_price: product.price,
+      product_original_price: product.originalPrice,
+  product_discount: product.originalPrice - product.price,
+  product_discount_percentage: Math.round(((product.originalPrice - product.price) / product.originalPrice) * 100),
+  product_rating: product.rating,
+  product_stock: product.inStock,
+  product_description: product.description,
+  has_discount: product.originalPrice > product.price,
+  currency: "USD",
+  user_email: currentUser.email || 'unknown',
+  user_name: currentUser.name || 'unknown',
+  user_login_method: currentUser.loginMethod || 'unknown',
+  current_cart_count: getCartCount() + 1,
+  category_viewed: category,
+  page_url: window.location.href,
+  timestamp: new Date().toISOString(),
+  is_sale_item: product.originalPrice > product.price,
+  price_range: product.price < 1000 ? 'budget' :
+               product.price < 3000 ? 'mid_range' : 'luxury',
+  product_availability: product.inStock > 10 ? 'high' :
+                         product.inStock > 0 ? 'low' : 'out_of_stock'
+});
     } else {
       // Track dismissal
       if (window.Moengage) {
