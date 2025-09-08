@@ -3,10 +3,28 @@ import React from 'react'
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import myLogo from "../assets/image.png";
+import moengage from "@moengage/web-sdk";
 export default function Home() {
   const navigate = useNavigate();
   const { getCartCount } = useCart(); // Add cart functionality
-  
+   const handleLogout = () => {
+    try {
+      // MoEngage logout
+      moengage.destroy_session();
+      
+      // Clear local storage
+      localStorage.removeItem('currentUser');
+      
+      // Navigate to login page
+      navigate('/');
+      
+      console.log('✅ User logged out successfully');
+    } catch (error) {
+      console.error('❌ Logout error:', error);
+      // Force navigate even if MoEngage fails
+      navigate('/');
+    }
+  };
   const categories = [
     {
       id: 1,
@@ -81,49 +99,42 @@ export default function Home() {
             </nav>
 
             {/* User Menu - Updated with Cart */}
-            <div className="flex items-center space-x-4">
-              {/* Cart Button with Counter */}
-              <button 
-                onClick={() => navigate('/cart')}
-                className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all relative"
-              >
-                <span className="text-xl">🛍️</span>
-                {getCartCount() > 0 && (
-                  <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                    {getCartCount()}
-                  </span>
-                )}
-              </button>
-              
-              {/* Wishlist Button */}
-              <button className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all">
-                <span className="text-xl">❤️</span>
-              </button>
-              
+          {/* ✅ Clean User Menu with Logout */}
 <div className="flex items-center space-x-4">
+  {/* Cart Button with Counter */}
   <button 
     onClick={() => navigate('/cart')}
     className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all relative"
   >
     <span className="text-xl">🛍️</span>
-    <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-      {getCartCount()}
-    </span>
+    {getCartCount() > 0 && (
+      <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+        {getCartCount()}
+      </span>
+    )}
   </button>
   
-  {/* 👤 Profile Link */}
+  {/* Wishlist Button */}
+  <button className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all">
+    <span className="text-xl">❤️</span>
+  </button>
+  
+  {/* Profile Button */}
   <button 
     onClick={() => navigate('/profile')}
     className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all"
   >
     <span className="text-xl">👤</span>
   </button>
+  
+  {/* ✅ Logout Button */}
+  <button 
+    onClick={handleLogout}
+    className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-lg font-medium transition-all text-sm"
+  >
+    Log Out
+  </button>
 </div>
-              {/* User Profile */}
-              <div className="bg-purple-100 p-2 rounded-full hover:bg-purple-200 transition-colors cursor-pointer">
-                <span className="text-sm">👤</span>
-              </div>
-            </div>
           </div>
         </div>
       </header>
