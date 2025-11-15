@@ -1,13 +1,65 @@
+
+
 // src/pages/Home.jsx
-import React from 'react'
+import React, { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
 import myLogo from "../assets/image.png";
 import moengage from "@moengage/web-sdk";
+
 export default function Home() {
   const navigate = useNavigate();
-  const { getCartCount } = useCart(); // Add cart functionality
-   const handleLogout = () => {
+  const { getCartCount } = useCart(); // cart functionality
+
+  // ✅ Helper to send MoEngage user details
+  const moEngageLogin = (userId, userInfo = {}) => {
+    try {
+      moengage.add_unique_user_id(userId);
+      if (userInfo.email) moengage.add_email(userInfo.email);
+      if (userInfo.mobile) moengage.add_mobile(userInfo.mobile);
+      if (userInfo.firstName) moengage.add_first_name(userInfo.firstName);
+      if (userInfo.lastName) moengage.add_last_name(userInfo.lastName);
+      if (userInfo.birthday) moengage.add_birthday(userInfo.birthday);
+      if (userInfo.gender) moengage.add_gender(userInfo.gender);
+      if (userInfo.name) {
+        moengage.add_user_attribute("full_name", userInfo.name);
+      }
+      console.log("✅ MoEngage user attributes sent:", { userId, ...userInfo });
+    } catch (error) {
+      console.error("❌ MoEngage error:", error);
+    }
+  };
+
+  // ✅ Send data to MoEngage on Home page load
+  useEffect(() => {
+    const savedUser = localStorage.getItem("currentUser");
+
+    if (savedUser) {
+      const user = JSON.parse(savedUser);
+
+      // Register the user with MoEngage
+      moEngageLogin(user.email || user.id, user);
+
+      // Decide event type
+      if (user.loginMethod === "email") {
+        moengage.track_event("user_registered", {
+          source: "home_screen",
+          registration_method: "email",
+          user_email: user.email,
+          user_name: user.name || `${user.firstName} ${user.lastName}`,
+        });
+      } else if (user.loginMethod === "google") {
+        moengage.track_event("user_login", {
+          source: "home_screen",
+          login_method: "google",
+          user_email: user.email,
+          user_name: user.name,
+        });
+      }
+    }
+  }, []);
+
+  const handleLogout = () => {
     try {
       // MoEngage logout
       moengage.destroy_session();
@@ -25,49 +77,15 @@ export default function Home() {
       navigate('/');
     }
   };
+
   const categories = [
-    {
-      id: 1,
-      name: "Necklaces",
-      emoji: "📿",
-      image: myLogo,
-    },
-    {
-      id: 2,
-      name: "Earrings", 
-      emoji: "💎",
-      image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=500",
-      count: "85+ Pieces"
-    },
-    {
-      id: 3,
-      name: "Rings",
-      emoji: "💍", 
-      image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?q=80&w=500",
-      count: "95+ Pieces"
-    },
-    {
-      id: 4,
-      name: "Bracelets",
-      emoji: "📿",
-      image: "https://images.unsplash.com/photo-1611652022419-a9419f74343d?q=80&w=500", 
-      count: "60+ Pieces"
-    },
-    {
-      id: 5,
-      name: "Brooches",
-      emoji: "✨",
-      image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=500",
-      count: "40+ Pieces"
-    },
-    {
-      id: 6,
-      name: "Anklets",
-      emoji: "🌟",
-      image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6bi0Jks7pRlx8eyJqd-kT6jqrPvFW-4q95g&s",
-      count: "30+ Pieces"
-    }
-  ]
+    { id: 1, name: "Necklaces", emoji: "📿", image: myLogo },
+    { id: 2, name: "Earrings", emoji: "💎", image: "https://images.unsplash.com/photo-1535632066927-ab7c9ab60908?q=80&w=500", count: "85+ Pieces" },
+    { id: 3, name: "Rings", emoji: "💍", image: "https://images.unsplash.com/photo-1605100804763-247f67b3557e?q=80&w=500", count: "95+ Pieces" },
+    { id: 4, name: "Bracelets", emoji: "📿", image: "https://images.unsplash.com/photo-1611652022419-a9419f74343d?q=80&w=500", count: "60+ Pieces" },
+    { id: 5, name: "Brooches", emoji: "✨", image: "https://images.unsplash.com/photo-1515562141207-7a88fb7ce338?q=80&w=500", count: "40+ Pieces" },
+    { id: 6, name: "Anklets", emoji: "🌟", image: "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcR6bi0Jks7pRlx8eyJqd-kT6jqrPvFW-4q95g&s", count: "30+ Pieces" }
+  ];
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-pink-50 via-purple-50 to-yellow-50">
@@ -98,43 +116,33 @@ export default function Home() {
               <a href="#" className="text-gray-700 hover:text-purple-600 font-medium transition-colors">Contact</a>
             </nav>
 
-            {/* User Menu - Updated with Cart */}
-          {/* ✅ Clean User Menu with Logout */}
-<div className="flex items-center space-x-4">
-  {/* Cart Button with Counter */}
-  <button 
-    onClick={() => navigate('/cart')}
-    className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all relative"
-  >
-    <span className="text-xl">🛍️</span>
-    {getCartCount() > 0 && (
-      <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
-        {getCartCount()}
-      </span>
-    )}
-  </button>
-  
-  {/* Wishlist Button */}
-  <button className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all">
-    <span className="text-xl">❤️</span>
-  </button>
-  
-  {/* Profile Button */}
-  <button 
-    onClick={() => navigate('/profile')}
-    className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all"
-  >
-    <span className="text-xl">👤</span>
-  </button>
-  
-  {/* ✅ Logout Button */}
-  <button 
-    onClick={handleLogout}
-    className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-lg font-medium transition-all text-sm"
-  >
-    Log Out
-  </button>
-</div>
+            {/* ✅ User Menu */}
+            <div className="flex items-center space-x-4">
+              {/* Cart */}
+              <button onClick={() => navigate('/cart')} className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all relative">
+                <span className="text-xl">🛍️</span>
+                {getCartCount() > 0 && (
+                  <span className="absolute -top-2 -right-2 bg-purple-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {getCartCount()}
+                  </span>
+                )}
+              </button>
+
+              {/* Wishlist */}
+              <button className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all">
+                <span className="text-xl">❤️</span>
+              </button>
+
+              {/* Profile */}
+              <button onClick={() => navigate('/profile')} className="text-gray-700 hover:text-purple-600 transform hover:scale-110 transition-all">
+                <span className="text-xl">👤</span>
+              </button>
+
+              {/* Logout */}
+              <button onClick={handleLogout} className="bg-red-100 hover:bg-red-200 text-red-700 px-3 py-2 rounded-lg font-medium transition-all text-sm">
+                Log Out
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -192,10 +200,7 @@ export default function Home() {
                 
                 <div className="p-6">
                   <button 
-                    onClick={() => {
-                      console.log(`Navigating to: /collection/${category.name.toLowerCase()}`);
-                      navigate(`/collection/${category.name.toLowerCase()}`);
-                    }}
+                    onClick={() => navigate(`/collection/${category.name.toLowerCase()}`)}
                     className="w-full bg-gradient-to-r from-purple-500 to-pink-500 text-white py-3 rounded-2xl font-semibold hover:scale-105 transform transition-all duration-200"
                   >
                     Shop {category.name}
@@ -245,22 +250,8 @@ export default function Home() {
             <div>
               <h4 className="font-semibold mb-4">Quick Links</h4>
               <ul className="space-y-2 text-sm text-gray-400">
-                <li>
-                  <button 
-                    onClick={() => navigate('/home')}
-                    className="hover:text-white transition-colors text-left"
-                  >
-                    Home
-                  </button>
-                </li>
-                <li>
-                  <button 
-                    onClick={() => navigate('/collection/rings')}
-                    className="hover:text-white transition-colors text-left"
-                  >
-                    Collections
-                  </button>
-                </li>
+                <li><button onClick={() => navigate('/home')} className="hover:text-white transition-colors text-left">Home</button></li>
+                <li><button onClick={() => navigate('/collection/rings')} className="hover:text-white transition-colors text-left">Collections</button></li>
                 <li><a href="#" className="hover:text-white transition-colors">Size Guide</a></li>
                 <li><a href="#" className="hover:text-white transition-colors">Care Instructions</a></li>
               </ul>
@@ -286,7 +277,7 @@ export default function Home() {
                 <span className="text-xl cursor-pointer hover:scale-110 transform transition-all">📞</span>
               </div>
               <p className="text-sm text-gray-400">
-                📧 hello@sparkleandco.com<br/>
+                📧 hello@sparkleandco.com
                 📞 +1 (555) 123-4567
               </p>
             </div>
@@ -298,5 +289,6 @@ export default function Home() {
         </div>
       </footer>
     </div>
-  )
+  );
 }
+

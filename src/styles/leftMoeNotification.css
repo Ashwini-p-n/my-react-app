@@ -1,0 +1,109 @@
+/* Override MoEngage notification positioning to BOTTOM LEFT side */
+
+/* Target MoEngage's notification container */
+[class*="moe-chrome-style-notification"],
+[class*="moe-notification"],
+.moe-chrome-style-notification-safari,
+.moe-chrome-style-notification,
+div[style*="position: fixed"][style*="z-index"],
+div[style*="position:fixed"][style*="z-index"] {
+  /* Position in the BOTTOM LEFT corner */
+  left: 20px !important;
+  right: auto !important;
+  top: auto !important; /* Ensure top is not set */
+  bottom: 20px !important; /* Pin to the bottom edge */
+  transform: none !important; /* Removed vertical centering */
+  
+  /* Add smooth slide-in animation from left */
+  animation: slideInFromLeft 0.5s ease-out !important;
+}
+
+/* Specific targeting for your MoEngage notification */
+.moe-chrome-style-notification-safari {
+  left: 20px !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: 20px !important; /* Pin to the bottom left */
+  transform: none !important;
+  width: 422px !important;
+  margin: 0 !important;
+}
+#moe-push-div img{
+  display: none;
+}
+ #optInTitle{
+  font-size: 1.2em !important;
+}
+#moe-push-div p {
+  font-size: 4.2em !important;
+}
+/* Animation for sliding in from left */
+@keyframes slideInFromLeft {
+  from {
+    left: -450px !important;
+    opacity: 0;
+  }
+  to {
+    left: 20px !important;
+    opacity: 1;
+  }
+}
+
+/* Ensure notification appears on bottom left on mobile too, adjusting margin */
+@media (max-width: 768px) {
+  [class*="moe-chrome-style-notification"],
+  [class*="moe-notification"],
+  .moe-chrome-style-notification-safari,
+  .moe-chrome-style-notification {
+    left: 10px !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 10px !important; /* Adjusted bottom for smaller screens */
+    transform: none !important;
+    width: 350px !important;
+    max-width: calc(100vw - 20px) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  [class*="moe-chrome-style-notification"],
+  [class*="moe-notification"],
+  .moe-chrome-style-notification-safari,
+  .moe-chrome-style-notification {
+    left: 5px !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: 5px !important; /* Adjusted bottom for mobile */
+    transform: none !important;
+    width: 300px !important;
+    max-width: calc(100vw - 10px) !important;
+  }
+}
+
+/* Additional targeting for any MoEngage notification elements */
+div[class*="notification"][style*="position"] {
+  left: 20px !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: 20px !important; /* Set to bottom left */
+  transform: none !important;
+}
+
+/* If MoEngage uses inline styles for centering, this will help override */
+div[style*="left: calc(50%"] {
+  left: 20px !important;
+  top: auto !important;
+  bottom: 20px !important; /* Explicitly set bottom */
+  transform: none !important;
+}
+
+/* Target the notification by its background color if needed */
+div[style*="background-color:#FFFFFF"][style*="position:fixed"],
+div[style*="background-color: #FFFFFF"][style*="position: fixed"] {
+  left: 20px !important;
+  right: auto !important;
+  top: auto !important;
+  bottom: 20px !important; /* Set to bottom left */
+  transform: none !important;
+}
+
