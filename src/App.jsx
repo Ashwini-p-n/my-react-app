@@ -19,19 +19,20 @@ import UserProfile from './pages/UserProfile';
 import './styles/leftMoeNotification.css';
 
 // ✅ MoEngage NPM SDK
-import moengage from "@moengage/web-sdk";
+// import moengage from "@moengage/web-sdk";
 
-// ✅ Initialize MoEngage SDK (keep your existing settings)
-moengage.initialize({
-  app_id: "MYL4VOAV1ZAERHPDK9NV42XR",
-  cluster: "dc_1",
-  debug_logs: 0,
-  swPath: "",
-  cards: {
-    enable: true,
-    placeholder: '#cardIcon'
-  }
-});
+// // ✅ Initialize MoEngage SDK (keep your existing settings)
+// moengage.initialize({
+//   app_id: "MYL4VOAV1ZAERHPDK9NV42XR",
+//   cluster: "dc_1",
+//   debug_logs: 0,
+//   useLatest: true,
+//   swPath: "",
+//   cards: {
+//     enable: true,
+//     placeholder: '#cardIcon'
+//   }
+// });
 
 function App() {
 
